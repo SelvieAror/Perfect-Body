@@ -36,7 +36,7 @@ function Login() {
         }
 
         setTimeout(() => {
-          navigate("/");
+          navigate("/User");
         }, 1000);
       } else {
         setMessage("❌ " + (data.error || "Login failed"));

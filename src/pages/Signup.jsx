@@ -47,7 +47,7 @@ function Signup() {
 
       if (res.ok) {
         alert("✅ User created successfully!");
-         navigate("/");
+         navigate("/User");
  
         setFormData({
           username: "",
