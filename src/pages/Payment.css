@@ -1,0 +1,223 @@
+@import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@500;700&family=DM+Sans:wght@300;400;500&display=swap');
+
+.pay-root {
+  min-height: 100vh;
+  background: #0f1117;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: 'DM Sans', sans-serif;
+  padding: 2rem;
+  position: relative;
+  overflow: hidden;
+}
+
+.pay-root::before {
+  content: '';
+  position: absolute;
+  width: 600px;
+  height: 600px;
+  background: radial-gradient(circle,
+      rgba(99, 211, 145, 0.08) 0%,
+      transparent 70%);
+  top: -100px;
+  right: -100px;
+}
+
+.pay-root::after {
+  content: '';
+  position: absolute;
+  width: 400px;
+  height: 400px;
+  background: radial-gradient(circle,
+      rgba(99, 180, 211, 0.06) 0%,
+      transparent 70%);
+  bottom: -80px;
+  left: -80px;
+}
+
+.pay-card {
+  background: #181c27;
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  border-radius: 24px;
+  padding: 3rem;
+  width: 100%;
+  max-width: 480px;
+  position: relative;
+  z-index: 1;
+  box-shadow: 0 40px 80px rgba(0, 0, 0, 0.5);
+}
+
+.pay-step-indicator {
+  display: flex;
+  gap: 0.5rem;
+  margin-bottom: 2rem;
+}
+
+.pay-step-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.15);
+}
+
+.pay-step-dot.active {
+  background: #63d391;
+  width: 24px;
+  border-radius: 4px;
+}
+
+.pay-title {
+  font-family: 'Playfair Display', serif;
+  font-size: 1.75rem;
+  color: white;
+  margin-bottom: 0.5rem;
+}
+
+.pay-subtitle {
+  color: rgba(255, 255, 255, 0.45);
+  margin-bottom: 2rem;
+}
+
+.plan-box {
+  background: rgba(99, 211, 145, 0.05);
+  border: 1px solid rgba(99, 211, 145, 0.15);
+  border-radius: 16px;
+  padding: 1.5rem;
+  margin-bottom: 2rem;
+}
+
+.plan-name {
+  color: #63d391;
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  margin-bottom: 0.5rem;
+}
+
+.plan-price {
+  font-size: 2.5rem;
+  color: white;
+}
+
+.plan-price span {
+  font-size: 1rem;
+  color: rgba(255, 255, 255, 0.45);
+}
+
+.plan-features {
+  list-style: none;
+  padding: 0;
+  margin-top: 1rem;
+}
+
+.plan-features li {
+  color: rgba(255, 255, 255, 0.7);
+  margin-bottom: 0.5rem;
+}
+
+.pay-btn {
+  width: 100%;
+  padding: 1rem;
+  background: #63d391;
+  border: none;
+  border-radius: 12px;
+  color: #0f1117;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.pay-btn:hover {
+  background: #4ec97c;
+}
+
+.pay-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.pay-message {
+  margin-top: 1rem;
+  padding: 1rem;
+  border-radius: 10px;
+  text-align: center;
+}
+
+.pay-message.error {
+  background: rgba(239, 68, 68, 0.1);
+  color: #f87171;
+}
+
+.pay-message.success {
+  background: rgba(99, 211, 145, 0.1);
+  color: #63d391;
+}
+
+.pay-demo-note {
+  margin-top: 1rem;
+  text-align: center;
+  color: rgba(255, 255, 255, 0.25);
+}
+
+.pay-success-badge {
+  color: #63d391;
+  margin-bottom: 1.5rem;
+}
+
+.nut-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  margin: 1.5rem 0;
+}
+
+.nut-card {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding: 1rem;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 14px;
+  cursor: pointer;
+}
+
+.nut-card.selected {
+  border-color: #63d391;
+  background: rgba(99, 211, 145, 0.08);
+}
+
+.nut-avatar {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  background: #2a7a52;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #63d391;
+  font-weight: bold;
+}
+
+.nut-info {
+  flex: 1;
+}
+
+.nut-name {
+  color: white;
+  font-weight: 500;
+}
+
+.nut-specialty {
+  color: rgba(255, 255, 255, 0.4);
+  font-size: 0.8rem;
+}
+
+.nut-check {
+  color: #63d391;
+  font-weight: bold;
+}
+
+.nut-loading {
+  color: rgba(255, 255, 255, 0.4);
+  text-align: center;
+}

@@ -1,21 +1,8 @@
-"""
-URL configuration for Backend project.
 
-The `urlpatterns` list routes URLs to views. For more information please see:
-    https://docs.djangoproject.com/en/6.0/topics/http/urls/
-Examples:
-Function views
-    1. Add an import:  from my_app import views
-    2. Add a URL to urlpatterns:  path('', views.home, name='home')
-Class-based views
-    1. Add an import:  from other_app.views import Home
-    2. Add a URL to urlpatterns:  path('', Home.as_view(), name='home')
-Including another URLconf
-    1. Import the include() function: from django.urls import include, path
-    2. Add a URL to urlpatterns:  path('blog/', include('blog.urls'))
-"""
-from myapp.views import register, login_view
+from django import views
 
+from myapp.views import admin_delete_user, admin_get_users, admin_list_users, admin_set_role, admin_update_role, book_consultation, create_checkout_session, delete_blog, get_assigned_nutritionist, get_consultations, get_my_patients, get_nutritionists, get_reports, get_user_reports, log_meal, me, mock_subscribe, register, login_view, get_meals, report_blog, resolve_report, save_consultation_notes, stripe_webhook, submit_report, update_profile, get_profile, delete_meal, save_nutritionist, get_my_consultations, get_nutritionist_stats
+from myapp.views import get_blogs, create_blog, get_blog
 from django.contrib import admin
 from django.urls import path, include
 from myapp.views import hello_api
@@ -37,5 +24,38 @@ urlpatterns = [
     path('accounts/', include('django.contrib.auth.urls')),
 
     path('api/register/', register),
-     path("api/login/", login_view),
+    path("api/login/", login_view),
+    path('log-meal/', log_meal),
+    path('get-meals/', get_meals),
+    path('update-profile/', update_profile),
+    path("get-profile/", get_profile),
+    path('delete-meal/', delete_meal, name='delete-meal'),
+    path("api/get-nutritionists/", get_nutritionists),
+    path("api/book-consultation/", book_consultation),
+    path("api/get-consultations/", get_consultations),
+    path('api/create-checkout-session/', create_checkout_session, name='create_checkout_session'),
+    path('api/stripe-webhook/', stripe_webhook, name='stripe_webhook'),
+    path('api/mock-subscribe/', mock_subscribe, name='mock_subscribe'),
+    path('api/me/', me, name='me'), 
+    path('admin/users/',admin_list_users, name='admin-list-users'),
+    path('admin/users/<int:user_id>/role/',admin_set_role, name='admin-set-role'),
+    path('admin/users/<int:user_id>/',admin_delete_user, name='admin-delete-user'),
+    path("api/admin/users/", admin_get_users),
+    path("api/admin/users/<int:user_id>/role/", admin_update_role),
+    path("api/save_nutritionist/", save_nutritionist),
+    path("api/get-assigned-nutritionist/", get_assigned_nutritionist),
+    path("api/nutritionist/patients/", get_my_patients, name="nutritionist-patients"),
+    path("api/nutritionist/consultations/", get_my_consultations, name="nutritionist-consultations"),
+    path("api/nutritionist/consultations/<int:consultation_id>/notes/", save_consultation_notes, name="save-consultation-notes"),
+    path("api/nutritionist/stats/", get_nutritionist_stats, name="nutritionist-stats"),
+    path('api/blogs/', get_blogs, name='get_blogs'),
+    path('api/blogs/create/', create_blog, name='create_blog'),
+    path('api/blogs/<int:blog_id>/', get_blog, name='get_blog'),
+    path('api/blogs/<int:blog_id>/report/', report_blog, name='report_blog'),
+    path('api/blogs/<int:blog_id>/delete/', delete_blog, name='delete_blog'),
+    path('api/blog-reports/', get_reports, name='get_reports'),
+    path('api/submit-report/', submit_report, name='submit_report'),
+    path("api/reports/", submit_report, name="submit-report"),
+    path("api/reports/<int:report_id>/resolve/", resolve_report, name="resolve-report"),
+    path("api/reports/all/", get_user_reports, name="get-user-reports"),
 ]

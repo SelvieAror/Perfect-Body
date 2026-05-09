@@ -1,7 +1,8 @@
 from django.contrib import admin
-from .models import TodoItem
-from .models import MenuItem
+from .models import UserProfile
 
-admin.site.register(TodoItem)
-admin.site.register(MenuItem)
-#run --> python manage.py makemigrations everytime you make changes to database models then run --> python manage.py migrate to apply those changes to the database
+@admin.register(UserProfile)
+class UserProfileAdmin(admin.ModelAdmin):
+    list_display = ('user', 'role', 'age', 'goal')   
+    list_filter = ('role',)                           
+    search_fields = ('user__username',)               

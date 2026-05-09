@@ -1,14 +1,12 @@
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import "./Login.css";
-import Button from "../components/Button";
 
 function Login() {
-  const navigate = useNavigate();
-
-  const [email, setEmail] = useState("");
+  const [email, setEmail]       = useState("");
   const [password, setPassword] = useState("");
-  const [message, setMessage] = useState("");
+  const [message, setMessage]   = useState("");
+  const navigate = useNavigate();
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -16,32 +14,34 @@ function Login() {
     try {
       const response = await fetch("http://127.0.0.1:8000/api/login/", {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          email: email,  
-          password: password,
-        }),
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email, password }),
       });
 
       const data = await response.json();
+if (response.ok) {
+  setMessage("✅ Login successful!");
 
-      if (response.ok) {
-        setMessage("✅ Login successful!");
-        
-       
-        if (data.token) {
-          localStorage.setItem("token", data.token);
-        }
+  localStorage.setItem("access",       data.access);
+  localStorage.setItem("refresh",      data.refresh);
+  localStorage.setItem("username",     data.username);
+  localStorage.setItem("user_id",      data.user_id);        // ← ADD THIS
+  localStorage.setItem("role",         data.role);
+  localStorage.setItem("is_superuser", data.is_superuser ? "true" : "false");
 
-        setTimeout(() => {
-          navigate("/User");
-        }, 1000);
-      } else {
-        setMessage("❌ " + (data.error || "Login failed"));
+  if (data.is_subscribed) {
+    localStorage.setItem("subscription", "true");
+  } else {
+    localStorage.removeItem("subscription");
+  }
+
+  window.dispatchEvent(new Event("storage"));
+  setTimeout(() => navigate("/User"), 1000);
+} else {
+        setMessage(`❌ ${data.detail || data.error || "Invalid email or password."}`);
       }
-    } catch {
+
+    } catch (error) {
       setMessage("❌ Server error. Try again.");
     }
   };
@@ -70,8 +70,7 @@ function Login() {
         {message && <p className="login-message">{message}</p>}
 
         <p className="signup-text">
-          Don't have an account?{" "}
-          <Link to="/signup">Sign up now</Link>
+          Don't have an account? <Link to="/signup">Sign up now</Link>
         </p>
       </form>
     </div>

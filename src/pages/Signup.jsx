@@ -1,6 +1,6 @@
 import { useState } from "react";
 import "./Signup.css";
-import { Link, useNavigate } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 
 function Signup() {
   const navigate = useNavigate();
@@ -14,24 +14,19 @@ function Signup() {
     gender: ""
   });
 
-   const handleChange = (e) => {
-    const { name, placeholder, value } = e.target;
-    
-    const fieldName = name || placeholder;
-    setFormData({
-      ...formData,
-      [fieldName]: value
-    });
+  const handleChange = (e) => {
+    const { name, value } = e.target;
+    setFormData({ ...formData, [name]: value });
   };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
 
     try {
+      // Step 1: Register
       const res = await fetch("http://127.0.0.1:8000/api/register/", {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json"
-        },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           username: formData.username,
           password: formData.password,
@@ -45,21 +40,27 @@ function Signup() {
 
       const data = await res.json();
 
-      if (res.ok) {
-        alert("✅ User created successfully!");
-         navigate("/User");
- 
-        setFormData({
-          username: "",
-          password: "",
-          email: "",
-          firstName: "",
-          lastName: "",
-          age: "",
-          gender: ""
-        });
-      } else {
+      if (!res.ok) {
         alert("❌ " + (data.error || "Registration failed"));
+        return;
+      }
+
+      // Step 2: Store tokens from registration response (backend now returns them)
+      if (data.access) {
+        localStorage.setItem("access", data.access);
+        localStorage.setItem("refresh", data.refresh);
+        localStorage.setItem("username", data.username);
+        if (data.role) localStorage.setItem("role", data.role);
+        if (data.is_subscribed) localStorage.setItem("subscription", "true");
+
+        // Trigger sidebar/nav to refresh auth state
+        window.dispatchEvent(new Event("storage"));
+
+        navigate("/User");
+      } else {
+        // Fallback: tokens not returned — just go to login
+        alert("✅ Account created! Please log in.");
+        navigate("/login");
       }
 
     } catch (err) {
@@ -135,7 +136,7 @@ function Signup() {
             name="gender"
             value={formData.gender}
             onChange={handleChange}
-             className={formData.gender === "" ? "placeholder-select" : "selected"}
+            className={formData.gender === "" ? "placeholder-select" : "selected"}
           >
             <option value="">Select Gender</option>
             <option value="M">Male</option>

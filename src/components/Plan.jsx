@@ -2,7 +2,7 @@ function Plan(props) {
 
   const handleClick = () => {
     console.log(`Selected plan: ${props.name}`);
-    // تقدر دير navigate هنا ولا checkout
+    
   };
 
   return (

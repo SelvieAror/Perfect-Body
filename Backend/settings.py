@@ -138,3 +138,7 @@ CORS_ALLOWED_ORIGINS = [
     "http://localhost:5173",
 ]
 CSRF_COOKIE_HTTPONLY = False
+
+STRIPE_PUBLIC_KEY = 'pk_test_...'
+STRIPE_SECRET_KEY = 'sk_test_...'
+STRIPE_WEBHOOK_SECRET = 'whsec_...'

@@ -7,10 +7,19 @@ import AiTracker from './dashboards/AiTracker';
 import MealPlan from './dashboards/MealPlan';
 import Consultations from './dashboards/Consultations';
 import Profile from './dashboards/Profile';
+import Nutritionist from './dashboards/Nutritionist';
 import { BrowserRouter, Routes, Route } from "react-router-dom";
+import Payment from './pages/Payment';
+import PaymentSuccess from './pages/Paymentsuccess';
+import PaymentCancel from './pages/Paymentcancel';
+import { useAuth } from './services/useAuth';
+import AdminDashboard from "./dashboards/AdminDashboard";
+import About from './pages/About';
+import Blogs from './pages/Blogs';
 
 
 function App() {
+  useAuth();
   return (
     <BrowserRouter>
       <Routes>
@@ -23,6 +32,13 @@ function App() {
           <Route path="/MealPlan" element={<MealPlan />} />
           <Route path="/Consultations" element={<Consultations />} />
           <Route path="/Profile" element={<Profile />} />
+          <Route path="/nutritionist" element={<Nutritionist />} />
+          <Route path="/payment/success" element={<PaymentSuccess />} />
+          <Route path="/payment/cancel" element={<PaymentCancel />} />
+            <Route path="/payment" element={<Payment />} />
+            <Route path="/admin" element={<AdminDashboard />} />
+            <Route path="/about" element={<About />} />
+            <Route path="/blogs" element={<Blogs />} />
       </Routes>
     </BrowserRouter>
   );

@@ -1,15 +1,10 @@
 import { useState, useRef } from "react";
 import { NavLink } from "react-router-dom";
 import "../App.css";
-import brandlogo from "../assets/brandlogo.png";
+
+import Sidebar from "../components/Sidebar";
  
-const menuItems = [
-  { name: "Overview", path: "/User", icon: "📊" },
-  { name: "AI Tracker", path: "/AiTrucker", icon: "🤖" },
-  { name: "Meal Plan", path: "/MealPlan", icon: "🍽️" },
-  { name: "Consultations", path: "/consultations", icon: "📅" },
-  { name: "Profile", path: "/Profile", icon: "👤" },
-];
+
  
 const initialLog = [
   { id: 1, meal: "Breakfast", time: "08:00", kcal: 320 },
@@ -19,43 +14,7 @@ const initialLog = [
  
 const GOAL_KCAL = 1800;
  
-function Sidebar({ isOpen, setIsOpen }) {
-  return (
-    <aside className={`nc-sidebar ${isOpen ? "open" : "collapsed"}`}>
-      <div className="nc-sidebar-top">
-        <button className="nc-toggle" onClick={() => setIsOpen(!isOpen)}>☰</button>
-        <div className="nc-brand">
-          <img src={brandlogo} alt="Perfect Body" className="nc-logo-img" />
-         <span className="nc-logo-text">
-              Perfect <em>Body</em>
-            </span>
-        </div>
-      </div>
- 
-     
- 
-      <nav className="nc-nav">
-        {menuItems.map((item) => (
-          <NavLink
-            key={item.name}
-            to={item.path}
-            className={({ isActive }) => `nc-nav-item ${isActive ? "active" : ""}`}
-          >
-            <span className="nc-nav-icon">{item.icon}</span>
-            {isOpen && <span className="nc-nav-label">{item.name}</span>}
-          </NavLink>
-        ))}
-      </nav>
- 
-      <div className="nc-sidebar-bottom">
-        <button className="nc-nav-item nc-logout" >
-          <span className="nc-nav-icon">🏠</span>
-          {isOpen && <span className="nc-nav-label">Back to Home</span>}
-        </button>
-      </div>
-    </aside>
-  );
-}
+
  
 function UploadZone({ preview, dragging, onFile, onDrag, onDrop, onClick, inputRef, onAnalyze, analyzing, result }) {
   return (

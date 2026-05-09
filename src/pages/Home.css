@@ -68,7 +68,10 @@
 .hm-nav-name em { font-style: normal; color: var(--green); }
  
 .hm-nav-links {
-  display: flex; gap: 28px; margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: 28px;
+  margin-left: auto;
 }
 .hm-nav-links a {
   text-decoration: none; font-size: 14px; font-weight: 500;
@@ -457,4 +460,51 @@
   .hm-stats      { gap: 0; }
   .hm-stat       { padding: 0 20px; }
   .hm-footer-inner { flex-direction: column; text-align: center; }
+}
+
+.hm-btn-back {
+  background: rgba(26, 175, 112, 0.08);
+  border: 1px solid rgba(26, 175, 112, 0.18);
+  color: var(--green-dark);
+
+  padding: 8px 18px;
+  border-radius: 999px;
+
+  font-family: 'DM Sans', sans-serif;
+  font-size: 14px;
+  font-weight: 600;
+
+  cursor: pointer;
+
+  transition:
+    background 0.15s,
+    transform 0.15s,
+    border-color 0.15s;
+}
+
+.hm-btn-back:hover {
+  background: rgba(26, 175, 112, 0.14);
+  border-color: rgba(26, 175, 112, 0.32);
+
+  transform: translateY(-1px);
+}
+
+.hm-nav-link-btn {
+  background: transparent;
+  border: none;
+  padding: 0;
+
+  font-family: 'DM Sans', sans-serif;
+  font-size: 14px;
+  font-weight: 500;
+
+  color: var(--text-muted);
+
+  cursor: pointer;
+
+  transition: color 0.15s;
+}
+
+.hm-nav-link-btn:hover {
+  color: var(--green);
 }
