@@ -1,3 +1,5 @@
+from mailbox import Message
+
 from rest_framework import serializers
 from .models import Blog, BlogReport
 
@@ -22,3 +24,37 @@ class BlogReportSerializer(serializers.ModelSerializer):
     class Meta:
         model = BlogReport
         fields = ['id', 'blog', 'blog_title', 'blog_author', 'reported_by', 'reason', 'created_at']
+        
+class MessageSerializer(serializers.ModelSerializer):
+    sender_username = serializers.CharField(source="sender.username", read_only=True)
+    receiver_username = serializers.CharField(source="receiver.username", read_only=True)
+
+    class Meta:
+        model = Message
+        fields = [
+            "id",
+            "sender",
+            "receiver",
+            "sender_username",
+            "receiver_username",
+            "text",
+            "created_at",
+            "is_read",
+        ]
+        
+class MessageSerializer(serializers.ModelSerializer):
+    sender_username = serializers.CharField(source="sender.username", read_only=True)
+    receiver_username = serializers.CharField(source="receiver.username", read_only=True)
+
+    class Meta:
+        model = Message
+        fields = [
+            "id",
+            "sender",
+            "receiver",
+            "sender_username",
+            "receiver_username",
+            "text",
+            "created_at",
+            "is_read",
+        ]

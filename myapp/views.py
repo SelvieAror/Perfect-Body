@@ -7,9 +7,9 @@ from django.views import View
 from django.http import JsonResponse
 from django.conf import settings
 from django.shortcuts import get_object_or_404
-
+from .Serializers import MessageSerializer
 from myapp.Serializers import BlogReportSerializer, BlogSerializer
-from .models import Blog, BlogReport, UserProfile, Meal, Consultation, UserReport
+from .models import Blog, BlogReport, UserProfile, Meal, Consultation, UserReport, Message
 from django.contrib.auth.models import User
 from rest_framework.response import Response
 from rest_framework.decorators import api_view, authentication_classes, permission_classes
@@ -24,6 +24,9 @@ import stripe
 from rest_framework.permissions import BasePermission
 from django.utils.timezone import localtime
 from django.utils.timezone import now
+from django.db.models import Q
+from datetime import datetime
+
 
 
 @receiver(post_save, sender=User)
@@ -758,7 +761,7 @@ def get_my_patients(request):
         })
     return Response(data)
 
-api_view(["GET"])
+@api_view(["GET"])
 @permission_classes([IsAuthenticated])
 def get_my_consultations(request):
     """Returns all consultations where this user is the nutritionist."""
@@ -999,3 +1002,186 @@ def resolve_report(request, report_id):
     report.is_resolved = not report.is_resolved
     report.save()
     return Response({"success": True, "is_resolved": report.is_resolved})
+
+@api_view(["GET"])
+@permission_classes([IsAuthenticated])
+def get_messages(request):
+    """Get all messages between current user and another user"""
+    other_user_id = request.GET.get("user_id")
+
+    if not other_user_id:
+        return Response({"error": "user_id required"}, status=400)
+
+    try:
+        other_user = User.objects.get(id=other_user_id)
+    except User.DoesNotExist:
+        return Response({"error": "User not found"}, status=404)
+
+    # Get messages between the two users
+    messages = Message.objects.filter(
+        Q(sender=request.user, receiver=other_user) |
+        Q(sender=other_user, receiver=request.user)
+    ).order_by("created_at")
+
+    # Mark as read
+    Message.objects.filter(sender=other_user, receiver=request.user).update(read=True)
+
+    data = []
+    for msg in messages:
+       data.append({
+    "id": msg.id,
+    "sender_username": msg.sender.username,
+    "sender_id": msg.sender.id,
+    "receiver_username": msg.receiver.username,
+    "receiver_id": msg.receiver.id,
+    "text": msg.text,
+    "created_at": msg.created_at.strftime("%H:%M"),
+    "read": msg.read,
+    "is_mine": msg.sender.id == request.user.id,  # ← add this
+})
+
+    return Response(data)
+
+
+@api_view(["POST"])
+@permission_classes([IsAuthenticated])
+def send_message(request):
+    """Send a message to another user"""
+    receiver_id = request.data.get("receiver_id")
+    text = request.data.get("text", "").strip()
+
+    if not receiver_id or not text:
+        return Response(
+            {"error": "receiver_id and text required"},
+            status=400
+        )
+
+    try:
+        receiver = User.objects.get(id=receiver_id)
+    except User.DoesNotExist:
+        return Response({"error": "Receiver not found"}, status=404)
+
+    message = Message.objects.create(
+        sender=request.user,
+        receiver=receiver,
+        text=text
+    )
+
+    return Response({
+        "id": message.id,
+        "sender_username": message.sender.username,
+        "sender_id": message.sender.id,
+        "receiver_username": message.receiver.username,
+        "receiver_id": message.receiver.id,
+        "text": message.text,
+        "created_at": message.created_at.strftime("%H:%M"),
+        "read": message.read,
+    }, status=201)
+    
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def get_nutritionist_message_patients(request):
+    """Get all patients this nutritionist has messages with"""
+    # Get all unique patients who have sent/received messages with this nutritionist
+    patients = User.objects.filter(
+        Q(sent_messages__receiver=request.user) |
+        Q(received_messages__sender=request.user)
+    ).distinct()
+
+    data = []
+    for patient in patients:
+        # Get last message
+        last_msg = Message.objects.filter(
+            Q(sender=patient, receiver=request.user) |
+            Q(sender=request.user, receiver=patient)
+        ).order_by('-created_at').first()
+
+        # Count unread
+        unread = Message.objects.filter(
+            sender=patient,
+            receiver=request.user,
+            read=False
+        ).count()
+
+        data.append({
+            "id": patient.id,
+            "name": f"{patient.first_name} {patient.last_name}".strip() or patient.username,
+            "username": patient.username,
+            "last_message": last_msg.text if last_msg else "",
+            "unread_count": unread,
+        })
+
+    # Sort by last message time
+    data.sort(key=lambda x: x['last_message'], reverse=True)
+    return Response(data)
+
+
+# @api_view(['GET'])
+# @permission_classes([IsAuthenticated])
+# def get_messages_between(request, patient_id):
+#     """Get all messages between nutritionist and a specific patient"""
+#     try:
+#         patient = User.objects.get(id=patient_id)
+#     except User.DoesNotExist:
+#         return Response({"error": "Patient not found"}, status=404)
+
+#     messages = Message.objects.filter(
+#         Q(sender=request.user, receiver=patient) |
+#         Q(sender=patient, receiver=request.user)
+#     ).order_by('created_at')
+
+#     # Mark as read
+#     Message.objects.filter(sender=patient, receiver=request.user).update(read=True)
+
+#     data = []
+#     for msg in messages:
+#         data.append({
+#             "id": msg.id,
+#             "sender": msg.sender.username,
+#             "message": msg.text,
+#             "is_mine": msg.sender.id == request.user.id,
+#             "created_at": msg.created_at.strftime("%H:%M"),
+#         })
+
+#     return Response(data)
+
+
+# @api_view(['POST'])
+# @permission_classes([IsAuthenticated])
+# def send_message_to_patient(request):
+#     """Send a message to a patient"""
+#     receiver_id = request.data.get("receiver_id")
+#     message_text = request.data.get("message") or request.data.get("text", "").strip()
+
+#     print(f"DEBUG: receiver_id={receiver_id}, message_text={message_text}, data={request.data}")
+
+#     if not receiver_id:
+#         return Response(
+#             {"error": "receiver_id required"},
+#             status=400
+#         )
+
+#     if not message_text:
+#         return Response(
+#             {"error": "message text required"},
+#             status=400
+#         )
+
+#     try:
+#         receiver = User.objects.get(id=receiver_id)
+#     except User.DoesNotExist:
+#         return Response({"error": "Patient not found"}, status=404)
+
+#     msg = Message.objects.create(
+#         sender=request.user,
+#         receiver=receiver,
+#         text=message_text
+#     )
+
+#     return Response({
+#         "id": msg.id,
+#         "sender": msg.sender.username,
+#         "message": msg.text,
+#         "is_mine": True,
+#         "created_at": msg.created_at.strftime("%H:%M"),
+#     }, status=201)

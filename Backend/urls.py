@@ -1,7 +1,7 @@
 
 from django import views
 
-from myapp.views import admin_delete_user, admin_get_users, admin_list_users, admin_set_role, admin_update_role, book_consultation, create_checkout_session, delete_blog, get_assigned_nutritionist, get_consultations, get_my_patients, get_nutritionists, get_reports, get_user_reports, log_meal, me, mock_subscribe, register, login_view, get_meals, report_blog, resolve_report, save_consultation_notes, stripe_webhook, submit_report, update_profile, get_profile, delete_meal, save_nutritionist, get_my_consultations, get_nutritionist_stats
+from myapp.views import admin_delete_user, admin_get_users, admin_list_users, admin_set_role, admin_update_role, book_consultation, create_checkout_session, delete_blog, get_assigned_nutritionist, get_consultations, get_messages, get_my_patients, get_nutritionist_message_patients, get_nutritionists, get_reports, get_user_reports, log_meal, me, mock_subscribe, register, login_view, get_meals, report_blog, resolve_report, save_consultation_notes, send_message, stripe_webhook, submit_report, update_profile, get_profile, delete_meal, save_nutritionist, get_my_consultations, get_nutritionist_stats
 from myapp.views import get_blogs, create_blog, get_blog
 from django.contrib import admin
 from django.urls import path, include
@@ -58,4 +58,13 @@ urlpatterns = [
     path("api/reports/", submit_report, name="submit-report"),
     path("api/reports/<int:report_id>/resolve/", resolve_report, name="resolve-report"),
     path("api/reports/all/", get_user_reports, name="get-user-reports"),
+    path("api/messages/", get_messages),          # uses ?user_id=
+    path("api/send-message/", send_message),
+    path("api/nutritionist/messages/patients/", get_nutritionist_message_patients),
+    # path('api/nutritionist/messages/patients/', get_nutritionist_message_patients, name='get_nutritionist_message_patients'),
+    # path('api/messages/<int:patient_id>/', get_messages_between, name='get_messages_between'),
+    # path('api/send-message/', send_message_to_patient, name='send_message_to_patient'),
+    # path("api/messages/<int:user_id>/", get_conversation),
+    # path("api/send-message/", send_message),
+    # path("api/nutritionist/messages/patients/", nutritionist_patients_messages),
 ]

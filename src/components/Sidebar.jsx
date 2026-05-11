@@ -24,6 +24,7 @@ export default function Sidebar({ isOpen, setIsOpen }) {
     { name: "Consultations", path: "/consultations", icon: "📅" },
     { name: "Profile",       path: "/Profile",       icon: "👤" },
     { name: "Blogs",         path: "/blogs",         icon: "📝" },
+    { name: "Messages",      path: "/messages",      icon: "💬" },
   ];
 
   const nutritionistMenuItems = [

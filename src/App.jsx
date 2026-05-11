@@ -16,6 +16,7 @@ import { useAuth } from './services/useAuth';
 import AdminDashboard from "./dashboards/AdminDashboard";
 import About from './pages/About';
 import Blogs from './pages/Blogs';
+import Messages from './pages/Messages';
 
 
 function App() {
@@ -27,18 +28,19 @@ function App() {
         <Route path="/" element={<Home />} />
         <Route path="/signup" element={<Signup />} />
         <Route path="/login" element={<Login />} />
-          <Route path="/User" element={<User />} />
-          <Route path="/AiTracker" element={<AiTracker />} />
-          <Route path="/MealPlan" element={<MealPlan />} />
-          <Route path="/Consultations" element={<Consultations />} />
-          <Route path="/Profile" element={<Profile />} />
-          <Route path="/nutritionist" element={<Nutritionist />} />
-          <Route path="/payment/success" element={<PaymentSuccess />} />
-          <Route path="/payment/cancel" element={<PaymentCancel />} />
-            <Route path="/payment" element={<Payment />} />
-            <Route path="/admin" element={<AdminDashboard />} />
-            <Route path="/about" element={<About />} />
-            <Route path="/blogs" element={<Blogs />} />
+        <Route path="/User" element={<User />} />
+        <Route path="/AiTracker" element={<AiTracker />} />
+        <Route path="/MealPlan" element={<MealPlan />} />
+        <Route path="/Consultations" element={<Consultations />} />
+        <Route path="/Profile" element={<Profile />} />
+        <Route path="/nutritionist" element={<Nutritionist />} />
+        <Route path="/payment/success" element={<PaymentSuccess />} />
+        <Route path="/payment/cancel" element={<PaymentCancel />} />
+        <Route path="/payment" element={<Payment />} />
+        <Route path="/admin" element={<AdminDashboard />} />
+        <Route path="/about" element={<About />} />
+        <Route path="/blogs" element={<Blogs />} />
+        <Route path="/messages" element={<Messages />} />
       </Routes>
     </BrowserRouter>
   );
