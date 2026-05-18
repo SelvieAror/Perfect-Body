@@ -7,10 +7,11 @@ class BlogSerializer(serializers.ModelSerializer):
     author_name = serializers.CharField(source='author.username', read_only=True)
     author_id = serializers.IntegerField(source='author.id', read_only=True)
     report_count = serializers.SerializerMethodField()
+    pinned = serializers.BooleanField(read_only=True)
 
     class Meta:
         model = Blog
-        fields = ['id', 'title', 'content', 'author_name', 'author_id', 'created_at', 'report_count']
+        fields = ['id', 'title', 'content', 'author_name', 'author_id', 'created_at', 'report_count', 'pinned']
 
     def get_report_count(self, obj):
         return obj.reports.count()

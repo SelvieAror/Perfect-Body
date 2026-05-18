@@ -29,6 +29,7 @@ class UserProfile(models.Model):
     ('subscribed', 'Subscribed'),
     ('nutritionist', 'Nutritionist'),
     ('admin', 'Admin')
+    
 ],
         default='user'
     )
@@ -61,11 +62,15 @@ class UserProfile(models.Model):
     goal = models.CharField(max_length=200, blank=True)
 
     dob = models.DateField(null=True, blank=True)
-
+    
+    banned = models.BooleanField(default=False)
+    ban_reason = models.TextField(blank=True)
     
     created_at = models.DateTimeField(auto_now_add=True)
 
     updated_at = models.DateTimeField(auto_now=True)
+    
+
 
     def __str__(self):
         return self.user.username
@@ -117,6 +122,8 @@ class Blog(models.Model):
     content = models.TextField()
 
     created_at = models.DateTimeField(auto_now_add=True)
+    
+    pinned = models.BooleanField(default=False)
 
     def __str__(self):
         return self.title
@@ -175,3 +182,15 @@ class Message(models.Model):
 
     def __str__(self):
         return f"{self.sender.username} → {self.receiver.username}"
+    
+class NutritionistMealPlan(models.Model):
+    nutritionist = models.ForeignKey(User, on_delete=models.CASCADE, related_name="assigned_plans")
+    patient = models.ForeignKey(User, on_delete=models.CASCADE, related_name="meal_plans")
+    meals = models.JSONField(default=list)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        unique_together = ("nutritionist", "patient")
+
+    def __str__(self):
+        return f"{self.nutritionist.username} → {self.patient.username}"

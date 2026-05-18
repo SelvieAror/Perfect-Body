@@ -13,6 +13,7 @@ export default function Payment() {
 
   const [plan, setPlan] = useState(null);
 
+  
   const [step, setStep] = useState("payment");
 
   const [nutritionists, setNutritionists] = useState([]);
@@ -20,6 +21,9 @@ export default function Payment() {
 
   const [savingNutritionist, setSavingNutritionist] = useState(false);
   const [nutsLoading, setNutsLoading] = useState(false);
+
+  const [selectedPaymentMethod, setSelectedPaymentMethod] = useState("");
+  const [finalizingPayment, setFinalizingPayment] = useState(false);
 
   useEffect(() => {
     const name = searchParams.get("name");
@@ -37,7 +41,7 @@ export default function Payment() {
     if (step !== "pick-nutritionist") return;
 
     setNutsLoading(true);
-fetch(`${API}/get-nutritionists/`)
+    fetch(`${API}/get-nutritionists/`)
       .then((r) => {
         if (!r.ok) throw new Error(`HTTP ${r.status}`);
         return r.json();
@@ -47,7 +51,6 @@ fetch(`${API}/get-nutritionists/`)
       })
       .catch((err) => {
         console.error(err);
-
         setMessage({
           text: "Could not load nutritionists.",
           type: "error",
@@ -60,74 +63,49 @@ fetch(`${API}/get-nutritionists/`)
 
   const handlePay = async () => {
     setLoading(true);
+    setMessage({ text: "", type: "" });
 
-    setMessage({
-      text: "",
-      type: "",
-    });
-
-    const token =
-      localStorage.getItem("access") ||
-      localStorage.getItem("token");
-
+    const token = localStorage.getItem("access") || localStorage.getItem("token");
     const username = localStorage.getItem("username");
 
     if (!token || !username) {
-      setMessage({
-        text: "Please login first.",
-        type: "error",
-      });
-
+      setMessage({ text: "Please login first.", type: "error" });
       setTimeout(() => navigate("/login"), 1500);
-
       setLoading(false);
-
       return;
     }
 
     try {
-      const response = await fetch(
-        `${API}/mock-subscribe/`,
-        {
-          method: "POST",
-
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${token}`,
-          },
-        }
-      );
+      const response = await fetch(`${API}/mock-subscribe/`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+      });
 
       if (response.status === 401) {
         setMessage({
           text: "Session expired. Please login again.",
           type: "error",
         });
-
         localStorage.clear();
-
         setTimeout(() => navigate("/login"), 1500);
-
         return;
       }
-      
+
       const data = await response.json();
 
       if (!response.ok) {
-        throw new Error(
-          data.error || "Subscription failed"
-        );
+        throw new Error(data.error || "Subscription failed");
       }
 
-      localStorage.setItem("role", "subscribed");
-      localStorage.setItem("subscription", "true");
+      
 
       setStep("pick-nutritionist");
     } catch (err) {
       setMessage({
-        text:
-          err.message ||
-          "Something went wrong. Please try again.",
+        text: err.message || "Something went wrong. Please try again.",
         type: "error",
       });
     } finally {
@@ -136,91 +114,88 @@ fetch(`${API}/get-nutritionists/`)
   };
 
   const handleSaveNutritionist = async () => {
-  if (!selectedNutritionist) return;
+    if (!selectedNutritionist) return;
 
-  setSavingNutritionist(true);
+    setSavingNutritionist(true);
+    setMessage({ text: "", type: "" });
 
-  setMessage({
-    text: "",
-    type: "",
-  });
+    const token = localStorage.getItem("access") || localStorage.getItem("token");
 
-  const token =
-    localStorage.getItem("access") ||
-    localStorage.getItem("token");
-
-  try {
-    const res = await fetch(
-      `${API}/save_nutritionist/`,
-      {
+    try {
+      const res = await fetch(`${API}/save_nutritionist/`, {
         method: "POST",
-
         headers: {
           "Content-Type": "application/json",
           Authorization: `Bearer ${token}`,
         },
-
         body: JSON.stringify({
           nutritionist_id: Number(selectedNutritionist),
         }),
+      });
+
+      const contentType = res.headers.get("content-type") || "";
+
+      if (!contentType.includes("application/json")) {
+        throw new Error(`Server returned HTML (${res.status}). Check Django URL.`);
       }
-    );
 
-    // IMPORTANT
-    const contentType =
-      res.headers.get("content-type") || "";
+      const data = await res.json();
 
-    if (!contentType.includes("application/json")) {
-      throw new Error(
-        `Server returned HTML (${res.status}). Check Django URL.`
-      );
+      if (!res.ok) {
+        throw new Error(data.error || "Failed to save nutritionist");
+      }
+
+      
+      setStep("pick-payment-method");
+    } catch (err) {
+      console.error(err);
+      setMessage({
+        text: err.message || "Something went wrong.",
+        type: "error",
+      });
+      localStorage.setItem("role", "subscribed");
+      localStorage.setItem("subscription", "true");
+    } finally {
+      setSavingNutritionist(false);
     }
+  };
 
-    const data = await res.json();
+  const handleFinalizePayment = async () => {
+    if (!selectedPaymentMethod) return;
 
-     if (!res.ok) {
-      throw new Error(data.error || "Failed to save nutritionist");
+    setFinalizingPayment(true);
+    setMessage({ text: "", type: "" });
+
+    try {
+      
+      localStorage.setItem("role", "subscribed");
+      localStorage.setItem("subscription", "true");
+      window.dispatchEvent(new Event("storage"));
+
+      setMessage({ text: "✓ Payment complete! Redirecting...", type: "success" });
+      setTimeout(() => navigate("/user"), 1500);
+    } catch (err) {
+      setMessage({
+        text: "Something went wrong.",
+        type: "error",
+      });
+    } finally {
+      setFinalizingPayment(false);
     }
+  };
 
-    // ✅ Finalize subscription state in localStorage
-    localStorage.setItem("role", "subscribed");
-    localStorage.setItem("subscription", "true");
-    window.dispatchEvent(new Event("storage")); // notify Nav, Sidebar, MealPlan
-
-    setMessage({ text: "All set! Redirecting...", type: "success" });
-    setTimeout(() => navigate("/user"), 1500);
-
-  } catch (err) {
-    console.error(err);
-
-    setMessage({
-      text: err.message || "Something went wrong.",
-      type: "error",
-    });
-  } finally {
-    setSavingNutritionist(false);
-  }
-};
   return (
     <div className="pay-root">
       <div className="pay-card">
 
+        {/* Step indicator - 3 dots */}
         <div className="pay-step-indicator">
-          <div
-            className={`pay-step-dot ${
-              step === "payment" ? "active" : ""
-            }`}
-          />
-
-          <div
-            className={`pay-step-dot ${
-              step === "pick-nutritionist"
-                ? "active"
-                : ""
-            }`}
-          />
+          <div className={`pay-step-dot ${step === "payment" ? "active" : ""}`} />
+          <div className={`pay-step-dot ${step === "pick-nutritionist" ? "active" : ""}`} />
+          <div className={`pay-step-dot ${step === "pick-payment-method" ? "active" : ""}`} />
         </div>
 
+        {/* STEP 1: Payment */}
         {step === "payment" ? (
           <>
             <h1 className="pay-title">
@@ -230,15 +205,12 @@ fetch(`${API}/get-nutritionists/`)
             </h1>
 
             <p className="pay-subtitle">
-              One step away from your health
-              journey.
+              One step away from your health journey.
             </p>
 
             {plan && (
               <div className="plan-box">
-                <p className="plan-name">
-                  {plan.name} Plan
-                </p>
+                <p className="plan-name">{plan.name} Plan</p>
 
                 <div className="plan-price">
                   ${plan.price}
@@ -259,25 +231,20 @@ fetch(`${API}/get-nutritionists/`)
               onClick={handlePay}
               disabled={loading}
             >
-              {loading
-                ? "Processing..."
-                : "Pay Now"}
+              {loading ? "Processing..." : "Pay Now"}
             </button>
 
             {message.text && (
-              <div
-                className={`pay-message ${message.type}`}
-              >
+              <div className={`pay-message ${message.type}`}>
                 {message.text}
               </div>
             )}
 
             <p className="pay-demo-note">
-              ⚡ Demo mode – no real payment
-              taken
+              ⚡ Demo mode – no real payment taken
             </p>
           </>
-        ) : (
+        ) : step === "pick-nutritionist" ? (
           <>
             <div className="pay-success-badge">
               ✓ Payment confirmed
@@ -290,8 +257,7 @@ fetch(`${API}/get-nutritionists/`)
             </h1>
 
             <p className="pay-subtitle">
-              Choose the expert you'll work
-              with.
+              Choose the expert you'll work with.
             </p>
 
             <div className="nut-list">
@@ -306,36 +272,21 @@ fetch(`${API}/get-nutritionists/`)
               ) : (
                 nutritionists.map((nut) => {
                   const id = nut.id.toString();
-
-                  const name =
-                    nut.display_name ||
-                    `${nut.first_name} ${nut.last_name}`;
-
-                  const isSelected =
-                    selectedNutritionist === id;
+                  const name = nut.display_name || `${nut.first_name} ${nut.last_name}`;
+                  const isSelected = selectedNutritionist === id;
 
                   return (
                     <button
                       key={id}
-                      className={`nut-card ${
-                        isSelected
-                          ? "selected"
-                          : ""
-                      }`}
-                      onClick={() =>
-                        setSelectedNutritionist(id)
-                      }
+                      className={`nut-card ${isSelected ? "selected" : ""}`}
+                      onClick={() => setSelectedNutritionist(id)}
                     >
                       <div className="nut-avatar">
-                        {name
-                          .charAt(0)
-                          .toUpperCase()}
+                        {name.charAt(0).toUpperCase()}
                       </div>
 
                       <div className="nut-info">
-                        <span className="nut-name">
-                          {name}
-                        </span>
+                        <span className="nut-name">{name}</span>
 
                         {nut.specialty && (
                           <span className="nut-specialty">
@@ -355,21 +306,75 @@ fetch(`${API}/get-nutritionists/`)
 
             <button
               className="pay-btn"
-              disabled={
-                !selectedNutritionist ||
-                savingNutritionist
-              }
+              disabled={!selectedNutritionist || savingNutritionist}
               onClick={handleSaveNutritionist}
             >
-              {savingNutritionist
-                ? "Saving..."
-                : "Confirm & Go to Dashboard"}
+              {savingNutritionist ? "Saving..." : "Continue"}
             </button>
 
             {message.text && (
-              <div
-                className={`pay-message ${message.type}`}
+              <div className={`pay-message ${message.type}`}>
+                {message.text}
+              </div>
+            )}
+          </>
+        ) : (
+          
+          <>
+            <div className="pay-success-badge">
+              ✓ Nutritionist selected
+            </div>
+
+            <h1 className="pay-title">
+              Choose payment
+              <br />
+              method
+            </h1>
+
+            <p className="pay-subtitle">
+              Select how you'd like to pay.
+            </p>
+
+            <div className="payment-methods">
+              <button
+                className={`payment-method-card ${
+                  selectedPaymentMethod === "paypal" ? "selected" : ""
+                }`}
+                onClick={() => setSelectedPaymentMethod("paypal")}
               >
+                <div className="payment-icon">💳</div>
+                <div className="payment-name">PayPal</div>
+                <div className="payment-desc">
+                  Fast and secure payments
+                </div>
+                <div className="payment-check">✓</div>
+              </button>
+
+              <button
+                className={`payment-method-card ${
+                  selectedPaymentMethod === "baridimob" ? "selected" : ""
+                }`}
+                onClick={() => setSelectedPaymentMethod("baridimob")}
+              >
+                <div className="payment-icon">📱</div>
+                <div className="payment-name">BaridiMob</div>
+                <div className="payment-desc">
+                  Mobile money transfer
+                </div>
+                <div className="payment-check">✓</div>
+              </button>
+            </div>
+
+            <button
+              className="pay-btn"
+              disabled={!selectedPaymentMethod || finalizingPayment}
+              onClick={handleFinalizePayment}
+            >
+              {finalizingPayment ? "Processing..." : "Complete Purchase"}
+            </button>
+
+            {message.text && (
+              <div className={`pay-message ${message.type}`}>
                 {message.text}
               </div>
             )}

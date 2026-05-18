@@ -8,46 +8,40 @@ const MEAL_PLANS = [
     id: "weight-loss",
     name: "Weight Loss Plan",
     meta: "Low calorie, high protein",
-    weeks: [
-      {
-        week: 1,
-        meals: [
-          { id: "b1", name: "Oatmeal + berries", kcal: 320 },
-          { id: "l1", name: "Chicken salad", kcal: 450 },
-          { id: "d1", name: "Grilled fish + vegetables", kcal: 400 },
-        ],
-      },
-    ],
+    weeks: [{
+      week: 1,
+      meals: [
+        { id: "b1", name: "Oatmeal + berries", kcal: 320 },
+        { id: "l1", name: "Chicken salad", kcal: 450 },
+        { id: "d1", name: "Grilled fish + vegetables", kcal: 400 },
+      ],
+    }],
   },
   {
     id: "muscle-gain",
     name: "Muscle Gain Plan",
     meta: "High protein, higher calories",
-    weeks: [
-      {
-        week: 1,
-        meals: [
-          { id: "b1", name: "Eggs + toast + peanut butter", kcal: 550 },
-          { id: "l1", name: "Rice + beef + olive oil", kcal: 750 },
-          { id: "d1", name: "Salmon + pasta", kcal: 700 },
-        ],
-      },
-    ],
+    weeks: [{
+      week: 1,
+      meals: [
+        { id: "b1", name: "Eggs + toast + peanut butter", kcal: 550 },
+        { id: "l1", name: "Rice + beef + olive oil", kcal: 750 },
+        { id: "d1", name: "Salmon + pasta", kcal: 700 },
+      ],
+    }],
   },
   {
     id: "maintenance",
     name: "Maintenance Plan",
     meta: "Balanced diet",
-    weeks: [
-      {
-        week: 1,
-        meals: [
-          { id: "b1", name: "Yogurt + fruit", kcal: 300 },
-          { id: "l1", name: "Chicken + rice", kcal: 600 },
-          { id: "d1", name: "Soup + bread", kcal: 500 },
-        ],
-      },
-    ],
+    weeks: [{
+      week: 1,
+      meals: [
+        { id: "b1", name: "Yogurt + fruit", kcal: 300 },
+        { id: "l1", name: "Chicken + rice", kcal: 600 },
+        { id: "d1", name: "Soup + bread", kcal: 500 },
+      ],
+    }],
   },
 ];
 
@@ -58,8 +52,8 @@ const planCalorieTargets = {
 };
 
 const planMeta = [
-  { label: "DIET TYPE", value: "", emoji: "🌿" },
-  { label: "DAILY TARGET", value: "", emoji: "🔥" },
+  { label: "DIET TYPE", emoji: "🌿" },
+  { label: "DAILY TARGET", emoji: "🔥" },
 ];
 
 export default function MealPlan() {
@@ -68,11 +62,14 @@ export default function MealPlan() {
   const [weekIndex] = useState(0);
   const [checked, setChecked] = useState({});
   const [sidebarOpen, setSidebarOpen] = useState(true);
-  const [firstName, setFirstName] = useState("");
   const [isSubscribed, setIsSubscribed] = useState(false);
 
-  // Custom meal state
-  const [customMeals, setCustomMeals] = useState([]); // { id, name, kcal }
+  // nutritionist-assigned meals (fetched from backend)
+  const [assignedMeals, setAssignedMeals] = useState([]);
+  const [hasAssignedPlan, setHasAssignedPlan] = useState(false);
+
+  // user-added custom meals (localStorage)
+  const [customMeals, setCustomMeals] = useState([]);
   const [showAddModal, setShowAddModal] = useState(false);
   const [showSubModal, setShowSubModal] = useState(false);
   const [newMealName, setNewMealName] = useState("");
@@ -80,47 +77,63 @@ export default function MealPlan() {
 
   const logging = useRef(false);
 
-  // All meals = plan meals + custom meals
-  const allMeals = [...selectedPlan.weeks[weekIndex].meals, ...customMeals];
+  // All meals shown = preset plan + assigned + user-added custom
+  // If nutritionist assigned meals, they replace the preset meals but user custom ones stay
+  const baseMeals = hasAssignedPlan
+    ? assignedMeals
+    : selectedPlan.weeks[weekIndex].meals;
+
+  const allMeals = [...baseMeals, ...customMeals];
   const TOTAL_ITEMS = allMeals.length;
 
-  // Check subscription from localStorage
-useEffect(() => {
+  // Check subscription
+  useEffect(() => {
     const token = localStorage.getItem("access");
-    if (!token) {
-      setIsSubscribed(false);
-      return;
-    }
+    if (!token) { setIsSubscribed(false); return; }
 
     fetch("http://127.0.0.1:8000/api/me/", {
       headers: { Authorization: `Bearer ${token}` },
     })
       .then((r) => r.json())
       .then((data) => {
-        // ✅ check both fields — whichever the backend returns
         const subbed =
           data.is_subscribed === true ||
           data.role === "subscribed" ||
           data.role === "nutritionist" ||
           data.role === "admin";
-
         setIsSubscribed(subbed);
-
-        if (subbed) {
-          localStorage.setItem("subscription", "true");
-        } else {
-          localStorage.removeItem("subscription");
-        }
+        if (subbed) localStorage.setItem("subscription", "true");
+        else localStorage.removeItem("subscription");
         window.dispatchEvent(new Event("storage"));
       })
       .catch(() => {
-        // Fallback to localStorage if network fails
         setIsSubscribed(
           localStorage.getItem("subscription") === "true" ||
-          ["subscribed","nutritionist","admin"].includes(localStorage.getItem("role"))
+          ["subscribed", "nutritionist", "admin"].includes(localStorage.getItem("role"))
         );
       });
   }, []);
+
+  // Fetch nutritionist-assigned meal plan
+  useEffect(() => {
+    const token = localStorage.getItem("access");
+    if (!token) return;
+
+    fetch("http://127.0.0.1:8000/api/my-meal-plan/", {
+      headers: { Authorization: `Bearer ${token}` },
+    })
+      .then((r) => r.ok ? r.json() : null)
+      .then((data) => {
+        if (data?.meals?.length > 0) {
+          setAssignedMeals(data.meals);
+          setHasAssignedPlan(true);
+        } else {
+          setHasAssignedPlan(false);
+        }
+      })
+      .catch(() => {});
+  }, []);
+
   // Load saved checkboxes
   useEffect(() => {
     const username = localStorage.getItem("username");
@@ -135,7 +148,7 @@ useEffect(() => {
     }
   }, [selectedPlan.id]);
 
-  // Load saved custom meals
+  // Load user-added custom meals (localStorage)
   useEffect(() => {
     const username = localStorage.getItem("username");
     if (!username) return;
@@ -148,16 +161,6 @@ useEffect(() => {
       setCustomMeals([]);
     }
   }, [selectedPlan.id]);
-
-  // Fetch first name
-  useEffect(() => {
-    const username = localStorage.getItem("username");
-    if (!username) return;
-    fetch(`http://127.0.0.1:8000/get-profile/?username=${username}`)
-      .then((r) => r.json())
-      .then((d) => setFirstName(d.first_name || ""))
-      .catch(console.error);
-  }, []);
 
   const logMeal = async (mealName, calories) => {
     if (logging.current) return;
@@ -192,22 +195,17 @@ useEffect(() => {
   };
 
   const handleAddMealClick = () => {
-    if (isSubscribed) {
-      setShowAddModal(true);
-    } else {
-      setShowSubModal(true);
-    }
+    if (isSubscribed) setShowAddModal(true);
+    else setShowSubModal(true);
   };
 
   const saveCustomMeal = () => {
     const name = newMealName.trim();
     const kcal = parseInt(newMealKcal, 10);
     if (!name || isNaN(kcal) || kcal <= 0) return;
-
     const meal = { id: `custom_${Date.now()}`, name, kcal };
     const updated = [...customMeals, meal];
     setCustomMeals(updated);
-
     const username = localStorage.getItem("username");
     if (username) {
       localStorage.setItem(
@@ -215,7 +213,6 @@ useEffect(() => {
         JSON.stringify(updated)
       );
     }
-
     setNewMealName("");
     setNewMealKcal("");
     setShowAddModal(false);
@@ -231,7 +228,6 @@ useEffect(() => {
         JSON.stringify(updated)
       );
     }
-    // Also uncheck if was checked
     setChecked((prev) => {
       const next = { ...prev };
       delete next[id];
@@ -240,14 +236,8 @@ useEffect(() => {
   };
 
   const completedCount = Object.values(checked).filter(Boolean).length;
-  const progressPct = TOTAL_ITEMS > 0
-    ? Math.round((completedCount / TOTAL_ITEMS) * 100)
-    : 0;
-
-  const checkedCalories = allMeals
-    .filter((item) => checked[item.id])
-    .reduce((sum, item) => sum + item.kcal, 0);
-
+  const progressPct = TOTAL_ITEMS > 0 ? Math.round((completedCount / TOTAL_ITEMS) * 100) : 0;
+  const checkedCalories = allMeals.filter((item) => checked[item.id]).reduce((sum, item) => sum + item.kcal, 0);
   const baseDailyTarget = planCalorieTargets[selectedPlan.id] || 2000;
   const remainingCalories = baseDailyTarget - checkedCalories;
   const dietType = selectedPlan.meta;
@@ -258,41 +248,53 @@ useEffect(() => {
       <main className="nc-main">
         <div className="mp-content">
 
-          {/* Plan selector cards */}
-          <div className="mp-plan-selector-cards">
-            {MEAL_PLANS.map((plan) => {
-              const icon =
-                plan.id === "weight-loss" ? "🥗"
-                : plan.id === "muscle-gain" ? "💪"
-                : "⚖️";
-              return (
-                <button
-                  key={plan.id}
-                  className={`mp-plan-card-new ${selectedPlan.id === plan.id ? "active" : ""}`}
-                  onClick={() => setSelectedPlan(plan)}
-                >
-                  <span className="mp-plan-icon">{icon}</span>
-                  <span className="mp-plan-name-new">{plan.name}</span>
-                  <span className="mp-plan-meta-new">{plan.meta}</span>
-                </button>
-              );
-            })}
-          </div>
+          {/* Plan selector — hidden if nutritionist assigned a plan */}
+          {!hasAssignedPlan && (
+            <div className="mp-plan-selector-cards">
+              {MEAL_PLANS.map((plan) => {
+                const icon = plan.id === "weight-loss" ? "🥗" : plan.id === "muscle-gain" ? "💪" : "⚖️";
+                return (
+                  <button
+                    key={plan.id}
+                    className={`mp-plan-card-new ${selectedPlan.id === plan.id ? "active" : ""}`}
+                    onClick={() => setSelectedPlan(plan)}
+                  >
+                    <span className="mp-plan-icon">{icon}</span>
+                    <span className="mp-plan-name-new">{plan.name}</span>
+                    <span className="mp-plan-meta-new">{plan.meta}</span>
+                  </button>
+                );
+              })}
+            </div>
+          )}
+
+          {/* Assigned plan banner */}
+          {hasAssignedPlan && (
+            <div className="mp-assigned-banner">
+              <span className="mp-assigned-icon">🧑‍⚕️</span>
+              <div>
+                <strong>Your nutritionist has set a custom plan for you</strong>
+                <p>This plan was created specifically for your goals. You can still add your own meals below.</p>
+              </div>
+            </div>
+          )}
 
           {/* Page heading */}
           <div className="mp-heading">
             <p className="mp-eyebrow">PERSONALIZED FOR YOU</p>
             <h1 className="mp-title">My nutrition <em>plan</em></h1>
             <p className="mp-subtitle">
-              A {dietType.toLowerCase()} plan tailored to your goals.
+              {hasAssignedPlan
+                ? "A personalised plan set by your nutritionist."
+                : `A ${dietType.toLowerCase()} plan tailored to your goals.`}
             </p>
           </div>
 
           {/* Meta cards */}
           <div className="mp-meta-grid">
             {planMeta.map((m) => {
-              const value =
-                m.label === "DIET TYPE" ? dietType
+              const value = m.label === "DIET TYPE"
+                ? (hasAssignedPlan ? "Custom Plan" : dietType)
                 : `${remainingCalories.toLocaleString()} kcal`;
               return (
                 <div key={m.label} className="mp-meta-card">
@@ -309,9 +311,7 @@ useEffect(() => {
             <div className="mp-progress-top">
               <div>
                 <span className="mp-progress-title">Today's <em>progress</em></span>
-                <p className="mp-progress-sub">
-                  {completedCount} of {TOTAL_ITEMS} meals completed
-                </p>
+                <p className="mp-progress-sub">{completedCount} of {TOTAL_ITEMS} meals completed</p>
               </div>
               <span className="mp-progress-pct">{progressPct}%</span>
             </div>
@@ -333,8 +333,7 @@ useEffect(() => {
                 </div>
                 <span className="mp-item-name">{item.name}</span>
                 <span className="mp-item-kcal">{item.kcal} kcal</span>
-                {/* Delete button only on custom meals */}
-                {item.id.startsWith("custom_") && (
+                {String(item.id).startsWith("custom_") && (
                   <button
                     className="mp-delete-btn"
                     onClick={(e) => { e.stopPropagation(); deleteCustomMeal(item.id); }}
@@ -355,7 +354,7 @@ useEffect(() => {
         </div>
       </main>
 
-      {/* ── Add Meal Modal (subscribed) ── */}
+      {/* Add Meal Modal */}
       {showAddModal && (
         <div className="mp-modal-overlay" onClick={() => setShowAddModal(false)}>
           <div className="mp-modal" onClick={(e) => e.stopPropagation()}>
@@ -376,18 +375,14 @@ useEffect(() => {
               onChange={(e) => setNewMealKcal(e.target.value)}
             />
             <div className="mp-modal-actions">
-              <button className="mp-modal-cancel" onClick={() => setShowAddModal(false)}>
-                Cancel
-              </button>
-              <button className="mp-modal-confirm" onClick={saveCustomMeal}>
-                Add Meal
-              </button>
+              <button className="mp-modal-cancel" onClick={() => setShowAddModal(false)}>Cancel</button>
+              <button className="mp-modal-confirm" onClick={saveCustomMeal}>Add Meal</button>
             </div>
           </div>
         </div>
       )}
 
-      {/* ── Subscribe Modal (not subscribed) ── */}
+      {/* Subscribe Modal */}
       {showSubModal && (
         <div className="mp-modal-overlay" onClick={() => setShowSubModal(false)}>
           <div className="mp-modal" onClick={(e) => e.stopPropagation()}>
@@ -398,9 +393,7 @@ useEffect(() => {
               Upgrade to unlock this feature and much more.
             </p>
             <div className="mp-modal-actions">
-              <button className="mp-modal-cancel" onClick={() => setShowSubModal(false)}>
-                Maybe Later
-              </button>
+              <button className="mp-modal-cancel" onClick={() => setShowSubModal(false)}>Maybe Later</button>
               <button
                 className="mp-modal-confirm"
                 onClick={() => { setShowSubModal(false); navigate("/payment"); }}

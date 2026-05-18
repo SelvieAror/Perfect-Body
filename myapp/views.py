@@ -9,7 +9,7 @@ from django.conf import settings
 from django.shortcuts import get_object_or_404
 from .Serializers import MessageSerializer
 from myapp.Serializers import BlogReportSerializer, BlogSerializer
-from .models import Blog, BlogReport, UserProfile, Meal, Consultation, UserReport, Message
+from .models import Blog, BlogReport, UserProfile, Meal, Consultation, UserReport, Message, NutritionistMealPlan
 from django.contrib.auth.models import User
 from rest_framework.response import Response
 from rest_framework.decorators import api_view, authentication_classes, permission_classes
@@ -59,6 +59,17 @@ def login_view(request):
 
     if not user or not user.check_password(password):
         return Response({"error": "Invalid credentials"}, status=400)
+
+    # ← ADD THIS: Check if user is banned
+    try:
+        profile = UserProfile.objects.get(user=user)
+        if profile.banned:
+            return Response({
+                "error": "Your account has been banned",
+                "ban_reason": profile.ban_reason or "No reason provided"
+            }, status=403)
+    except UserProfile.DoesNotExist:
+        pass
 
     refresh = RefreshToken.for_user(user)
     profile, _ = UserProfile.objects.get_or_create(user=user)
@@ -601,6 +612,8 @@ def admin_list_users(request):
             "last_name": u.last_name,
             "role": profile.role or "user",
             "subscription": profile.subscription,
+            "banned": profile.banned,  
+            "ban_reason": profile.ban_reason,  
             "date_joined": u.date_joined.strftime("%Y-%m-%d"),
         })
     return Response(data)
@@ -608,14 +621,10 @@ def admin_list_users(request):
 @api_view(["GET"])
 @permission_classes([IsAuthenticated, IsAdminRole])
 def admin_get_users(request):
-
     users = User.objects.all().order_by("-date_joined")
-
     data = []
-
     for user in users:
         profile, created = UserProfile.objects.get_or_create(user=user)
-
         data.append({
             "id": user.id,
             "username": user.username,
@@ -624,8 +633,11 @@ def admin_get_users(request):
             "last_name": user.last_name,
             "role": profile.role,
             "subscription": profile.subscription,
+            "banned": profile.banned,  
+            "ban_reason": profile.ban_reason,  
             "date_joined": localtime(user.date_joined).strftime("%Y-%m-%d"),
         })
+    return Response(data)
 
     return Response(data)
 @api_view(["POST"])
@@ -1017,13 +1029,13 @@ def get_messages(request):
     except User.DoesNotExist:
         return Response({"error": "User not found"}, status=404)
 
-    # Get messages between the two users
+    
     messages = Message.objects.filter(
         Q(sender=request.user, receiver=other_user) |
         Q(sender=other_user, receiver=request.user)
     ).order_by("created_at")
 
-    # Mark as read
+    
     Message.objects.filter(sender=other_user, receiver=request.user).update(read=True)
 
     data = []
@@ -1037,7 +1049,7 @@ def get_messages(request):
     "text": msg.text,
     "created_at": msg.created_at.strftime("%H:%M"),
     "read": msg.read,
-    "is_mine": msg.sender.id == request.user.id,  # ← add this
+    "is_mine": msg.sender.id == request.user.id,  
 })
 
     return Response(data)
@@ -1082,7 +1094,7 @@ def send_message(request):
 @permission_classes([IsAuthenticated])
 def get_nutritionist_message_patients(request):
     """Get all patients this nutritionist has messages with"""
-    # Get all unique patients who have sent/received messages with this nutritionist
+    
     patients = User.objects.filter(
         Q(sent_messages__receiver=request.user) |
         Q(received_messages__sender=request.user)
@@ -1090,13 +1102,13 @@ def get_nutritionist_message_patients(request):
 
     data = []
     for patient in patients:
-        # Get last message
+        
         last_msg = Message.objects.filter(
             Q(sender=patient, receiver=request.user) |
             Q(sender=request.user, receiver=patient)
         ).order_by('-created_at').first()
 
-        # Count unread
+        
         unread = Message.objects.filter(
             sender=patient,
             receiver=request.user,
@@ -1111,77 +1123,130 @@ def get_nutritionist_message_patients(request):
             "unread_count": unread,
         })
 
-    # Sort by last message time
+    
     data.sort(key=lambda x: x['last_message'], reverse=True)
     return Response(data)
 
 
-# @api_view(['GET'])
-# @permission_classes([IsAuthenticated])
-# def get_messages_between(request, patient_id):
-#     """Get all messages between nutritionist and a specific patient"""
-#     try:
-#         patient = User.objects.get(id=patient_id)
-#     except User.DoesNotExist:
-#         return Response({"error": "Patient not found"}, status=404)
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def ban_user(request, user_id):
+    """Ban a user. Admin only."""
+    if not is_admin(request.user):
+        return Response({"error": "Forbidden"}, status=403)
+    
+    try:
+        target_user = User.objects.get(id=user_id)
+    except User.DoesNotExist:
+        return Response({"error": "User not found"}, status=404)
+    
+    # Prevent banning yourself
+    if target_user.id == request.user.id:
+        return Response({"error": "You cannot ban yourself"}, status=400)
+    
+    reason = request.data.get("reason", "")
+    
+    profile, _ = UserProfile.objects.get_or_create(user=target_user)
+    profile.banned = True
+    profile.ban_reason = reason
+    profile.save()
+    
+    return Response({
+        "success": True,
+        "username": target_user.username,
+        "banned": True,
+        "ban_reason": reason,
+    })
+ 
+ 
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def unban_user(request, user_id):
+    """Unban a user. Admin only."""
+    if not is_admin(request.user):
+        return Response({"error": "Forbidden"}, status=403)
+    
+    try:
+        target_user = User.objects.get(id=user_id)
+    except User.DoesNotExist:
+        return Response({"error": "User not found"}, status=404)
+    
+    profile, _ = UserProfile.objects.get_or_create(user=target_user)
+    profile.banned = False
+    profile.ban_reason = ""
+    profile.save()
+    
+    return Response({
+        "success": True,
+        "username": target_user.username,
+        "banned": False,
+    })
+ 
+@api_view(["POST"])
+@permission_classes([IsAuthenticated])
+def toggle_pin_blog(request, blog_id):
+    """Toggle pinned status on a blog. Admin only."""
+    if not is_admin(request.user):
+        return Response({"error": "Forbidden"}, status=403)
 
-#     messages = Message.objects.filter(
-#         Q(sender=request.user, receiver=patient) |
-#         Q(sender=patient, receiver=request.user)
-#     ).order_by('created_at')
+    blog = get_object_or_404(Blog, id=blog_id)
+    blog.pinned = not blog.pinned
+    blog.save()
 
-#     # Mark as read
-#     Message.objects.filter(sender=patient, receiver=request.user).update(read=True)
+    return Response({"success": True, "pinned": blog.pinned, "id": blog.id})
 
-#     data = []
-#     for msg in messages:
-#         data.append({
-#             "id": msg.id,
-#             "sender": msg.sender.username,
-#             "message": msg.text,
-#             "is_mine": msg.sender.id == request.user.id,
-#             "created_at": msg.created_at.strftime("%H:%M"),
-#         })
+@api_view(["GET"])
+@permission_classes([IsAuthenticated])
+def get_patient_meal_plan(request, patient_id):
+    """Nutritionist fetches a patient's custom meal plan."""
+    try:
+        plan = NutritionistMealPlan.objects.get(
+            nutritionist=request.user,
+            patient_id=patient_id
+        )
+        return Response({"meals": plan.meals})
+    except NutritionistMealPlan.DoesNotExist:
+        return Response({"meals": []})
 
-#     return Response(data)
+
+@api_view(["POST"])
+@permission_classes([IsAuthenticated])
+def save_patient_meal_plan(request, patient_id):
+    """Nutritionist saves a custom meal plan for a patient."""
+    try:
+        patient = User.objects.get(id=patient_id)
+    except User.DoesNotExist:
+        return Response({"error": "Patient not found"}, status=404)
+
+    meals = request.data.get("meals", [])
+    if not isinstance(meals, list):
+        return Response({"error": "meals must be a list"}, status=400)
+
+    plan, _ = NutritionistMealPlan.objects.update_or_create(
+        nutritionist=request.user,
+        patient=patient,
+        defaults={"meals": meals}
+    )
+    return Response({"success": True, "meals": plan.meals})
 
 
-# @api_view(['POST'])
-# @permission_classes([IsAuthenticated])
-# def send_message_to_patient(request):
-#     """Send a message to a patient"""
-#     receiver_id = request.data.get("receiver_id")
-#     message_text = request.data.get("message") or request.data.get("text", "").strip()
+@api_view(["GET"])
+@permission_classes([IsAuthenticated])
+def get_my_meal_plan(request):
+    """Patient fetches the meal plan their nutritionist assigned them."""
+    try:
+        profile = request.user.profile
+    except UserProfile.DoesNotExist:
+        return Response({"meals": []})
 
-#     print(f"DEBUG: receiver_id={receiver_id}, message_text={message_text}, data={request.data}")
+    if not profile.assigned_nutritionist:
+        return Response({"meals": []})
 
-#     if not receiver_id:
-#         return Response(
-#             {"error": "receiver_id required"},
-#             status=400
-#         )
-
-#     if not message_text:
-#         return Response(
-#             {"error": "message text required"},
-#             status=400
-#         )
-
-#     try:
-#         receiver = User.objects.get(id=receiver_id)
-#     except User.DoesNotExist:
-#         return Response({"error": "Patient not found"}, status=404)
-
-#     msg = Message.objects.create(
-#         sender=request.user,
-#         receiver=receiver,
-#         text=message_text
-#     )
-
-#     return Response({
-#         "id": msg.id,
-#         "sender": msg.sender.username,
-#         "message": msg.text,
-#         "is_mine": True,
-#         "created_at": msg.created_at.strftime("%H:%M"),
-#     }, status=201)
+    try:
+        plan = NutritionistMealPlan.objects.get(
+            nutritionist=profile.assigned_nutritionist,
+            patient=request.user
+        )
+        return Response({"meals": plan.meals})
+    except NutritionistMealPlan.DoesNotExist:
+        return Response({"meals": []})

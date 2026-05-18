@@ -19,26 +19,44 @@ function Login() {
       });
 
       const data = await response.json();
-if (response.ok) {
-  setMessage("✅ Login successful!");
 
-  localStorage.setItem("access",       data.access);
-  localStorage.setItem("refresh",      data.refresh);
-  localStorage.setItem("username",     data.username);
-  localStorage.setItem("user_id",      data.user_id);        // ← ADD THIS
-  localStorage.setItem("role",         data.role);
-  localStorage.setItem("is_superuser", data.is_superuser ? "true" : "false");
+      if (response.ok) {
+        setMessage("✅ Login successful!");
 
-  if (data.is_subscribed) {
-    localStorage.setItem("subscription", "true");
-  } else {
-    localStorage.removeItem("subscription");
-  }
+        localStorage.setItem("access",       data.access);
+        localStorage.setItem("refresh",      data.refresh);
+        localStorage.setItem("username",     data.username);
+        localStorage.setItem("user_id",      data.user_id);
+        localStorage.setItem("role",         data.role);
+        localStorage.setItem("is_superuser", data.is_superuser ? "true" : "false");
 
-  window.dispatchEvent(new Event("storage"));
-  setTimeout(() => navigate("/User"), 1000);
-} else {
-        setMessage(`❌ ${data.detail || data.error || "Invalid email or password."}`);
+        if (data.is_subscribed) {
+          localStorage.setItem("subscription", "true");
+        } else {
+          localStorage.removeItem("subscription");
+        }
+
+        window.dispatchEvent(new Event("storage"));
+
+        
+        let redirectPath = "/User";
+
+          if (data.role === "nutritionist") {
+            redirectPath = "/nutritionist";
+          } else if (data.role === "admin") {
+            redirectPath = "/admin";
+          }
+
+            setTimeout(() => navigate(redirectPath), 1000);
+
+
+      } else {
+        
+        if (response.status === 403 && data.ban_reason) {
+          setMessage(`🚫 Account Banned\n\nReason: ${data.ban_reason}`);
+        } else {
+          setMessage(`❌ ${data.detail || data.error || "Invalid email or password."}`);
+        }
       }
 
     } catch (error) {
@@ -67,7 +85,14 @@ if (response.ok) {
 
         <button type="submit">Login</button>
 
-        {message && <p className="login-message">{message}</p>}
+        {message && (
+          <p className="login-message" style={{
+            whiteSpace: "pre-line",
+            color: message.includes("Banned") ? "#ef4444" : "inherit"
+          }}>
+            {message}
+          </p>
+        )}
 
         <p className="signup-text">
           Don't have an account? <Link to="/signup">Sign up now</Link>

@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import "./AdminDashboard.css";
+import Sidebar from "../components/Sidebar";
 
 const API = "http://127.0.0.1:8000/api";
 
@@ -27,6 +28,7 @@ export default function AdminDashboard() {
   const [activeTab, setActiveTab] = useState("users");
 
   // ── Users state ──
+  const [isOpen, setIsOpen] = useState(true);
   const [users, setUsers]               = useState([]);
   const [filtered, setFiltered]         = useState([]);
   const [loading, setLoading]           = useState(true);
@@ -36,6 +38,8 @@ export default function AdminDashboard() {
   const [saving, setSaving]             = useState({});
   const [pendingRoles, setPendingRoles] = useState({});
   const [deleteConfirm, setDeleteConfirm] = useState(null);
+  const [banConfirm, setBanConfirm]       = useState(null);
+  const [banReason, setBanReason]         = useState("");
 
   // ── Blogs state ──
   const [blogs, setBlogs]                     = useState([]);
@@ -104,7 +108,7 @@ export default function AdminDashboard() {
   const fetchReports = useCallback(async () => {
     setReportLoading(true);
     try {
-      const token = localStorage.getItem("access"); // ✅ always fresh
+      const token = localStorage.getItem("access");
       const res = await fetch(`${API}/reports/all/`, {
         headers: { Authorization: `Bearer ${token}` },
       });
@@ -195,6 +199,42 @@ export default function AdminDashboard() {
     }
   };
 
+  const banUser = async (userId, reason) => {
+    try {
+      const token = localStorage.getItem("access");
+      const res = await fetch(`${API}/admin/users/${userId}/ban/`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ reason }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Failed to ban");
+      setUsers(prev => prev.map(u => u.id === userId ? { ...u, banned: true, ban_reason: reason } : u));
+      showToast(`@${data.username} has been banned`);
+    } catch (e) {
+      showToast(e.message, "error");
+    } finally {
+      setBanConfirm(null);
+      setBanReason("");
+    }
+  };
+
+  const unbanUser = async (userId) => {
+    try {
+      const token = localStorage.getItem("access");
+      const res = await fetch(`${API}/admin/users/${userId}/unban/`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Failed to unban");
+      setUsers(prev => prev.map(u => u.id === userId ? { ...u, banned: false, ban_reason: "" } : u));
+      showToast(`@${data.username} has been unbanned`);
+    } catch (e) {
+      showToast(e.message, "error");
+    }
+  };
+
   const deleteUser = async (userId) => {
     try {
       const token = localStorage.getItem("access");
@@ -258,6 +298,7 @@ export default function AdminDashboard() {
     admins:        users.filter(u => u.role === "admin").length,
     nutritionists: users.filter(u => u.role === "nutritionist").length,
     subscribed:    users.filter(u => u.role === "subscribed" || u.subscription).length,
+    banned:        users.filter(u => u.banned).length,
     blogs:         blogs.length,
     openReports:   reports.filter(r => !r.is_resolved).length,
   };
@@ -274,12 +315,11 @@ export default function AdminDashboard() {
   );
 
   return (
-    <div className="adm-root">
-      {toast && (
-        <div className={`adm-toast adm-toast--${toast.type}`}>
-          {toast.type === "success" ? "✓" : "✕"} {toast.msg}
-        </div>
-      )}
+  <div className="nc-layout">
+    <Sidebar isOpen={isOpen} setIsOpen={setIsOpen} />
+
+    <main className="nc-main">
+      <div className="adm-root">
 
       <header className="adm-header">
         <div>
@@ -316,6 +356,7 @@ export default function AdminDashboard() {
             <div className="adm-stat"><span className="adm-stat-num adm-stat-num--admin">{stats.admins}</span><span className="adm-stat-label">Admins</span></div>
             <div className="adm-stat"><span className="adm-stat-num adm-stat-num--nutritionist">{stats.nutritionists}</span><span className="adm-stat-label">Nutritionists</span></div>
             <div className="adm-stat"><span className="adm-stat-num adm-stat-num--subscribed">{stats.subscribed}</span><span className="adm-stat-label">Subscribed</span></div>
+            <div className="adm-stat"><span className="adm-stat-num" style={{ color: "#ef4444" }}>{stats.banned}</span><span className="adm-stat-label">Banned</span></div>
           </div>
 
           <div className="adm-toolbar">
@@ -342,7 +383,7 @@ export default function AdminDashboard() {
               <table className="adm-table">
                 <thead>
                   <tr>
-                    <th>User</th><th>Email</th><th>Joined</th><th>Current Role</th><th>Change Role</th><th>Actions</th>
+                    <th>User</th><th>Email</th><th>Status</th><th>Current Role</th><th>Change Role</th><th>Actions</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -353,7 +394,7 @@ export default function AdminDashboard() {
                     const pending = pendingRoles[user.id] || user.role;
                     const dirty   = pending !== user.role;
                     return (
-                      <tr key={user.id} className={isMe ? "adm-row--me" : ""}>
+                      <tr key={user.id} className={isMe ? "adm-row--me" : ""} style={{ opacity: user.banned ? 0.6 : 1 }}>
                         <td>
                           <div className="adm-user-cell">
                             <div className={`adm-avatar adm-avatar--${roleColor(user.role)}`}>{initials(user)}</div>
@@ -364,23 +405,78 @@ export default function AdminDashboard() {
                           </div>
                         </td>
                         <td className="adm-email">{user.email}</td>
-                        <td className="adm-date">{user.date_joined}</td>
+                        <td>
+                          {user.banned ? (
+                            <span style={{
+                              background: "rgba(239, 68, 68, 0.15)",
+                              color: "#fca5a5",
+                              padding: "4px 10px",
+                              borderRadius: 8,
+                              fontSize: "0.8rem",
+                              fontWeight: 600,
+                              display: "inline-block",
+                            }}>
+                              🚫 Banned
+                            </span>
+                          ) : (
+                            <span style={{ color: "rgba(255,255,255,0.4)", fontSize: "0.85rem" }}>Active</span>
+                          )}
+                        </td>
                         <td><span className={`adm-role-badge ${roleColor(user.role)}`}>{user.role}</span></td>
                         <td>
                           <div className="adm-role-change">
-                            <select value={pending} disabled={isMe || saving[user.id]} onChange={e => setPendingRoles(prev => ({ ...prev, [user.id]: e.target.value }))} className="adm-select">
+                            <select value={pending} disabled={isMe || saving[user.id] || user.banned} onChange={e => setPendingRoles(prev => ({ ...prev, [user.id]: e.target.value }))} className="adm-select">
                               {ROLES.map(r => <option key={r.value} value={r.value}>{r.label}</option>)}
                             </select>
                             {dirty && !isMe && (
-                              <button className="adm-apply-btn" onClick={() => applyRole(user.id)} disabled={saving[user.id]}>
+                              <button className="adm-apply-btn" onClick={() => applyRole(user.id)} disabled={saving[user.id] || user.banned}>
                                 {saving[user.id] ? "…" : "Apply"}
                               </button>
                             )}
                           </div>
                         </td>
-                        <td>
+                        <td style={{ display: "flex", gap: "0.5rem" }}>
                           {!isMe && (
-                            <button className="adm-delete-btn" onClick={() => setDeleteConfirm(user)} title="Delete user">🗑</button>
+                            <>
+                              {user.banned ? (
+                                <button
+                                  className="adm-unban-btn"
+                                  onClick={() => unbanUser(user.id)}
+                                  title="Unban user"
+                                  style={{
+                                    background: "rgba(34, 197, 94, 0.15)",
+                                    color: "#86efac",
+                                    border: "1px solid rgba(34, 197, 94, 0.3)",
+                                    padding: "6px 12px",
+                                    borderRadius: 6,
+                                    cursor: "pointer",
+                                    fontSize: "0.75rem",
+                                    fontWeight: 600,
+                                  }}
+                                >
+                                  ↩ Unban
+                                </button>
+                              ) : (
+                                <button
+                                  className="adm-ban-btn"
+                                  onClick={() => setBanConfirm(user)}
+                                  title="Ban user"
+                                  style={{
+                                    background: "rgba(239, 68, 68, 0.15)",
+                                    color: "#fca5a5",
+                                    border: "1px solid rgba(239, 68, 68, 0.3)",
+                                    padding: "6px 12px",
+                                    borderRadius: 6,
+                                    cursor: "pointer",
+                                    fontSize: "0.75rem",
+                                    fontWeight: 600,
+                                  }}
+                                >
+                                  🚫 Ban
+                                </button>
+                              )}
+                              <button className="adm-delete-btn" onClick={() => setDeleteConfirm(user)} title="Delete user">🗑</button>
+                            </>
                           )}
                         </td>
                       </tr>
@@ -525,6 +621,36 @@ export default function AdminDashboard() {
         </>
       )}
 
+      {/* ── Ban Modal ── */}
+      {banConfirm && (
+        <div className="adm-modal-backdrop" onClick={() => setBanConfirm(null)}>
+          <div className="adm-modal" onClick={e => e.stopPropagation()}>
+            <h3>Ban user?</h3>
+            <p>This will prevent <strong>@{banConfirm.username}</strong> from logging in and using the application.</p>
+            <textarea
+              placeholder="Ban reason (optional)…"
+              value={banReason}
+              onChange={e => setBanReason(e.target.value)}
+              style={{
+                width: "100%",
+                padding: "0.75rem",
+                background: "rgba(255,255,255,0.06)",
+                border: "1px solid rgba(255,255,255,0.12)",
+                borderRadius: 8,
+                color: "#fff",
+                marginBottom: "1rem",
+                fontSize: "0.85rem",
+                minHeight: "60px",
+              }}
+            />
+            <div className="adm-modal-actions">
+              <button className="adm-modal-cancel" onClick={() => { setBanConfirm(null); setBanReason(""); }}>Cancel</button>
+              <button className="adm-modal-confirm" style={{ background: "#ef4444" }} onClick={() => banUser(banConfirm.id, banReason)}>Ban</button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* ── Delete User Modal ── */}
       {deleteConfirm && (
         <div className="adm-modal-backdrop" onClick={() => setDeleteConfirm(null)}>
@@ -552,6 +678,8 @@ export default function AdminDashboard() {
           </div>
         </div>
       )}
-    </div>
-  );
+         </div>
+    </main>
+  </div>
+);;
 }

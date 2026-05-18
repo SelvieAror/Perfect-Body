@@ -8,7 +8,7 @@ export default function Sidebar({ isOpen, setIsOpen }) {
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [role, setRole] = useState(localStorage.getItem("role") || "user");
 
-  // Re-read role whenever route changes or storage updates
+  
   useEffect(() => {
     const sync = () => setRole(localStorage.getItem("role") || "user");
     sync();
@@ -30,12 +30,20 @@ export default function Sidebar({ isOpen, setIsOpen }) {
   const nutritionistMenuItems = [
     { name: "Dashboard",     path: "/nutritionist",  icon: "🧑‍⚕️" },
     { name: "Profile",       path: "/Profile",       icon: "👤" },
+    { name: "Blogs",         path: "/blogs",         icon: "📝" },
   ];
+   
+   const adminMenuItems = [
+    { name: "Admin",         path: "/admin",         icon: "🛠️" },
+    { name: "Profile",       path: "/Profile",       icon: "👤" },
+    { name: "Blogs",         path: "/blogs",         icon: "📝" },
+  ];
+
 
   let menuItems = role === "nutritionist" ? nutritionistMenuItems : userMenuItems;
 
   if (localStorage.getItem("is_superuser") === "true") {
-    menuItems = [...menuItems, { name: "Admin", path: "/admin", icon: "🛠️" }];
+    menuItems = adminMenuItems;
   }
 
   const handleLogout = () => {
